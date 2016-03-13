@@ -21,8 +21,10 @@ dataLength = 10;
 imuQueue = zeros(queueDepth,dataLength);
 imuQueue(:,1) = (1:queueDepth)';
 findMaxMinType = 'MAX';
+starPosCal = 0;
+
 allData = [];allFilterData =[];
-errThreshold = [0, ones(1,3)*0.1, ones(1,3)*300, ones(1,3)*300];
+errThreshold = [0, ones(1,3)*1, ones(1,3)*300, ones(1,3)*300];
 
 n = length(imuData.timeMS);
 figure('Name','标记最值点','NumberTitle','off')
@@ -72,6 +74,7 @@ for cnt=1:n
             case 'MAX'
                 tf = maxDataArrived(findMaxOrMincolumns,cnt);
                 if (tf == 1)
+                    starPosCal = 1;
                     findMaxMinType = 'MIN';
                     % 将最大值放到最小值的“泡”中
                     temp = getImuFromFilterQueue();
@@ -87,6 +90,7 @@ for cnt=1:n
             case 'MIN'
                 tf = minDataArrived(findMaxOrMincolumns,cnt);
                 if (tf == 1)
+                    starPosCal = 1;
                     findMaxMinType = 'MAX';
                     % 将最小值放到最大值的“泡”中
                     temp = getImuFromFilterQueue();
@@ -102,6 +106,8 @@ for cnt=1:n
             otherwise
                 
         end
+        
+        tsq(starPosCal,getImuFromFilterQueue(-threshold),findMaxMinType);
     end
     
     updataIndex();
@@ -115,6 +121,24 @@ grid off
 plotData(allFilterData)
 end
 
+function tsq(starPosCal,imuData,flag)
+
+persistent lastFlag
+if isempty(lastFlag)
+    lastFlag = '';
+end
+
+if ~starPosCal
+    return;
+end
+
+if(~strcmp(lastFlag,flag))
+    disp('重置相关变量')
+    lastFlag = flag;
+end
+end
+
+
 
 %% 将数据压入到队列中
 function putImuIntoQueue(imuData)
@@ -126,21 +150,41 @@ imuQueue(index,:) = imuData;
 end
 
 
-%% 取出当前队列中最新的数据
-function imuData = getImuFromQueue()
+%% 取出当前队列中的数据
+function imuData = getImuFromQueue(varargin)
 
-global imuQueue index
+global imuQueue index queueDepth
 
-imuData = imuQueue(index,:);
+nVarargs = length(varargin);
+
+if ~nVarargs
+    imuData = imuQueue(index,:);
+else
+    temp = mod(index+varargin{1},queueDepth);
+    if ~temp
+        temp = queueDepth;
+    end
+    imuData = imuQueue(temp,:);
+end
 
 end
 
-%% 取出当前队列中最新的数据
-function imuData = getImuFromFilterQueue()
+%% 取出当前队列中的数据
+function imuData = getImuFromFilterQueue(varargin)
 
-global imuFilterQueue index
+global imuFilterQueue index queueDepth
 
-imuData = imuFilterQueue(index,:);
+nVarargs = length(varargin);
+
+if ~nVarargs
+    imuData = imuFilterQueue(index,:);
+else
+    temp = mod(index+varargin{1},queueDepth);
+    if ~temp
+        temp = queueDepth;
+    end
+    imuData = imuFilterQueue(temp,:);
+end
 
 end
 
