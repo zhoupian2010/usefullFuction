@@ -28,9 +28,24 @@ if nVarargs >2
 end
     
 
+if ~isstruct(data)
+    temp = data;
+    data = [];
+    data.timeMS = temp(:, 1);
+    data.accX = temp(:, 2);
+    data.accY = temp(:, 3);
+    data.accZ = temp(:, 4);
+    data.gyroX = temp(:, 5);
+    data.gyroY = temp(:, 6);
+    data.gyroZ = temp(:, 7);
+    data.roll = temp(:, 8);
+    data.pitch = temp(:, 9);
+    data.yaw = temp(:, 10);
+end
+
 if ifplot
     
-    figure('Name','原始数据曲线','NumberTitle','off')
+    figure('Name','数据曲线','NumberTitle','off')
     
     time = data.timeMS/1000;
     
