@@ -1,4 +1,4 @@
-function [imu, status] = importIMUData()
+function [imu, status] = importIMUData1()
 
 [FileName,PathName,FilterIndex] = uigetfile('*.log;*.txt;*.dat','选择数据文件');
 
@@ -30,7 +30,7 @@ delimiter = ' ';
 
 %% Read columns of data as strings:
 % For more information, see the TEXTSCAN documentation.
-formatSpec = '%s%s%s%s%s%s%s%s%s%s%[^\n\r]';
+formatSpec = '%s%s%s%s%s%s%s%s%s%s%s%[^\n\r]';
 
 %% Open the text file.
 fileID = fopen(filename,'r');
@@ -43,13 +43,13 @@ dataArray = textscan(fileID, formatSpec, 'Delimiter', delimiter, 'MultipleDelims
 
 %% Close the text file.
 fclose(fileID);
-
+waitbar(0.3)
 %% Convert the contents of columns containing numeric strings to numbers.
 % Replace non-numeric strings with NaN.
 raw = [dataArray{:,1:end-1}];
 numericData = NaN(size(dataArray{1},1),size(dataArray,2));
 
-for col=[1,2,3,4,5,6,7,8,9,10]
+for col=[1,2,3,4,5,6,7,8,9,10,11]
     % Converts strings in the input cell array to numbers. Replaced non-numeric
     % strings with NaN.
     rawData = dataArray{col};
@@ -81,26 +81,27 @@ for col=[1,2,3,4,5,6,7,8,9,10]
     end
 end
 
-waitbar(0.8)
-%% Exclude rows with non-numeric cells
-J = ~all(cellfun(@(x) (isnumeric(x) || islogical(x)) && ~isnan(x),raw),2); % Find rows with non-numeric cells
-raw(J,:) = [];
+waitbar(0.5)
+%% Replace non-numeric cells with NaN
+R = cellfun(@(x) ~isnumeric(x) && ~islogical(x),raw); % Find non-numeric cells
+raw(R) = {NaN}; % Replace non-numeric cells
 
 %% Allocate imported array to column variable names
-imu.timeMS = cell2mat(raw(:, 1));
+imu.timeUS = cell2mat(raw(:, 1));
 imu.accX = cell2mat(raw(:, 2));
 imu.accY = cell2mat(raw(:, 3));
 imu.accZ = cell2mat(raw(:, 4));
-imu.gyroX = cell2mat(raw(:, 5));
-imu.gyroY = cell2mat(raw(:, 6));
-imu.gyroZ = cell2mat(raw(:, 7));
-imu.roll = cell2mat(raw(:, 8));
-imu.pitch = cell2mat(raw(:, 9));
-imu.yaw = cell2mat(raw(:, 10));
+imu.q0 = cell2mat(raw(:, 5));
+imu.q1 = cell2mat(raw(:, 6));
+imu.q2 = cell2mat(raw(:, 7));
+imu.q3 = cell2mat(raw(:, 8));
+imu.roll = cell2mat(raw(:, 9));
+imu.pitch = cell2mat(raw(:, 10));
+imu.yaw = cell2mat(raw(:, 11));
 
 waitbar(1)
 
 status = 1;
 close(h) 
 %% Clear temporary variables
-% clearvars filename delimiter formatSpec fileID dataArray ans raw numericData col rawData row regexstr result numbers invalidThousandsSeparator thousandsRegExp me J;
+clearvars filename delimiter formatSpec fileID dataArray ans raw numericData col rawData row regexstr result numbers invalidThousandsSeparator thousandsRegExp me R;

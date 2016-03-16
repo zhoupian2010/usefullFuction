@@ -15,29 +15,32 @@ plotData(imuData,plotEnbal);
 
 %% 初始化变量
 threshold = 5;
-queueDepth = 10;
+queueDepth = 20;
 index = 1;
-dataLength = 10;
+dataLength = 11;
 imuQueue = zeros(queueDepth,dataLength);
 imuQueue(:,1) = (1:queueDepth)';
 findMaxMinType = 'MAX';
 starPosCal = 0;
+Vel = zeros(3,threshold);
+Pos = zeros(3,threshold);
 
 allData = [];allFilterData =[];
-errThreshold = [0, ones(1,3)*1, ones(1,3)*300, ones(1,3)*300];
+errThreshold = [0, ones(1,3)*1, ones(1,4)*0.5, ones(1,3)*360];
 
-n = length(imuData.timeMS);
+n = length(imuData.timeUS);
 figure('Name','标记最值点','NumberTitle','off')
 for cnt=1:n
     
     % 将最新采集到的数据压入队列中
-    putImuIntoQueue([imuData.timeMS(cnt),...
+    putImuIntoQueue([imuData.timeUS(cnt),...
         imuData.accX(cnt),...
         imuData.accY(cnt),...
         imuData.accZ(cnt),...
-        imuData.gyroX(cnt),...
-        imuData.gyroY(cnt),...
-        imuData.gyroZ(cnt),...
+        imuData.q0(cnt),...
+        imuData.q1(cnt),...
+        imuData.q2(cnt),...
+        imuData.q3(cnt),...
         imuData.roll(cnt),...
         imuData.pitch(cnt),...
         imuData.yaw(cnt)  ]);
@@ -59,16 +62,13 @@ for cnt=1:n
     updateMaxMin(cnt);
     
     % 查找第?列中的最大值 or 最小值
-    findMaxOrMincolumns = 8;
+    findMaxOrMincolumns = 9;
     %     2: accX
     %     3: accY
     %     4: accZ
-    %     5: gyroX
-    %     6: gyroY
-    %     7: gyroZ
-    %     8: roll
-    %     9: pitch
-    %     10: yaw
+    %     9: roll
+    %     10: pitch
+    %     11: yaw
     if (cnt > threshold)
         switch findMaxMinType
             case 'MAX'
@@ -107,7 +107,8 @@ for cnt=1:n
                 
         end
         
-        tsq(starPosCal,getImuFromFilterQueue(-threshold),findMaxMinType);
+        [Vel(:,cnt),Pos(:,cnt)] =VelPos(starPosCal,getImuFromFilterQueue(-threshold),findMaxMinType,Vel(:,cnt-1),Pos(:,cnt-1));
+        
     end
     
     updataIndex();
@@ -118,24 +119,63 @@ hold on
 plot(allFilterData(:,1),allFilterData(:,findMaxOrMincolumns),'b')
 grid off
 
-plotData(allFilterData)
+plotData(allFilterData,0)
+figure(5)
+plot(Pos');
+figure(6)
+plot(Vel');
+save Pos Vel
 end
 
-function tsq(starPosCal,imuData,flag)
 
-persistent lastFlag
+function [V,P]=VelPos(starPosCal,imuData,flag,vn_0,pos_0)
+persistent lastFlag turnaround
 if isempty(lastFlag)
-    lastFlag = '';
+    lastFlag = 'MAX';
+    turnaround = 0;
 end
-
-if ~starPosCal
+V=[0;0;0];
+P=[0;0;0];
+ts = 0.01;
+if starPosCal==0
     return;
 end
+q=imuData(5:8)';
+acc_b=imuData(2:4)';
+%计算Cbn
+C_bn(1,1)=1-2*(q(3)^2+q(4)^2);
+C_bn(1,2)=2*q(2)*q(3)-q(1)*q(4);
+C_bn(1,3)=2*q(2)*q(4)+q(1)*q(3);
+C_bn(2,1)=2*q(2)*q(3)+q(1)*q(4);
+C_bn(2,2)=1-2*(q(2)^2+q(4)^2);
+C_bn(2,3)=2*q(3)*q(4)-q(1)*q(2);
+C_bn(3,1)=2*q(2)*q(4)-q(1)*q(3);
+C_bn(3,2)=2*q(3)*q(4)+q(1)*q(2);
+C_bn(3,3)=1-2*(q(2)^2+q(3)^2);
+
+%计算线加速度
+gn=[0;0;1];
+g0=9.78;
+an=C_bn*acc_b-gn;
+
+%计算速度
+V=vn_0+an*g0*ts; %because sample rate is 100Hz
+
+%计算位移
+P=pos_0 +(V+vn_0)*0.5*ts;
 
 if(~strcmp(lastFlag,flag))
-    disp('重置相关变量')
-    lastFlag = flag;
+    turnaround = turnaround + 1;
+    if (turnaround == 2)
+        V=[0;0;0];
+        P=[0;0;0];
+        turnaround = 0;
+    end
 end
+
+lastFlag = flag;
+
+
 end
 
 
@@ -233,8 +273,8 @@ end
 
 %% 获取低通滤波系数
 function co = getFilterCo()
-dt = 0.005;     %采样周期
-fc = 5;         %截止频率
+dt = 0.01;     %采样周期
+fc = 20;         %截止频率
 rc = 1/(2*pi*fc);
 co = 1 - dt/(dt + rc);
 
