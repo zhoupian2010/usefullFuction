@@ -20,7 +20,7 @@ index = 1;
 dataLength = 11;
 imuQueue = zeros(queueDepth,dataLength);
 imuQueue(:,1) = (1:queueDepth)';
-findMaxMinType = 'MAX';
+findMaxMinType = '';
 starPosCal = 0;
 Vel = zeros(3,threshold);
 Pos = zeros(3,threshold);
@@ -104,6 +104,14 @@ for cnt=1:n
                     hold on
                 end
             otherwise
+                
+                if (maxDataArrived(findMaxOrMincolumns,cnt)) 
+                    findMaxMinType = 'MIN';
+                end               
+                
+                if (minDataArrived(findMaxOrMincolumns,cnt))
+                    findMaxMinType = 'MAX';
+                end
                 
         end
         
@@ -294,12 +302,12 @@ end
 
 
 for i = 2:dataLength
-    if (imuFilterQueue(index,i) >= maxImuData(i))
+    if (imuFilterQueue(index,i) > maxImuData(i))
         maxImuData(i) = imuFilterQueue(index,i);
         maxIndex(i) = cnt;
     end
     
-    if(imuFilterQueue(index,i) <= minImuData(i))
+    if(imuFilterQueue(index,i) < minImuData(i))
         minImuData(i) = imuFilterQueue(index,i);
         minIndex(i) = cnt;
     end
