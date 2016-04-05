@@ -1,9 +1,9 @@
-function [imu, status] = importIMUData1()
+function [imu, status] = importIMUData()
 
 [FileName,PathName,FilterIndex] = uigetfile('*.log;*.txt;*.dat','选择数据文件');
 
 status = 0;
-
+imu = [];
 if (0 == FilterIndex)
     return;
 end
