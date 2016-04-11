@@ -130,9 +130,12 @@ grid off
 plotData(allFilterData,0)
 figure(5)
 plot(Pos');
+title('Pos');legend('x','y','z')
 figure(6)
 plot(Vel');
-save Pos Vel
+title('Vel');legend('x','y','z')
+output = [Pos' Vel'];
+save result.txt -ascii output
 end
 
 
@@ -152,13 +155,13 @@ q=imuData(5:8)';
 acc_b=imuData(2:4)';
 %计算Cbn
 C_bn(1,1)=1-2*(q(3)^2+q(4)^2);
-C_bn(1,2)=2*q(2)*q(3)-q(1)*q(4);
-C_bn(1,3)=2*q(2)*q(4)+q(1)*q(3);
-C_bn(2,1)=2*q(2)*q(3)+q(1)*q(4);
+C_bn(1,2)=2*(q(2)*q(3)-q(1)*q(4));
+C_bn(1,3)=2*(q(2)*q(4)+q(1)*q(3));
+C_bn(2,1)=2*(q(2)*q(3)+q(1)*q(4));
 C_bn(2,2)=1-2*(q(2)^2+q(4)^2);
-C_bn(2,3)=2*q(3)*q(4)-q(1)*q(2);
-C_bn(3,1)=2*q(2)*q(4)-q(1)*q(3);
-C_bn(3,2)=2*q(3)*q(4)+q(1)*q(2);
+C_bn(2,3)=2*(q(3)*q(4)-q(1)*q(2));
+C_bn(3,1)=2*(q(2)*q(4)-q(1)*q(3));
+C_bn(3,2)=2*(q(3)*q(4)+q(1)*q(2));
 C_bn(3,3)=1-2*(q(2)^2+q(3)^2);
 
 %计算线加速度
@@ -298,6 +301,9 @@ global maxImuData minImuData maxIndex minIndex
 if isempty(maxImuData)
     maxImuData = imuFilterQueue(1,:);
     minImuData = imuFilterQueue(1,:);
+    maxIndex = ones(dataLength,1);
+    minIndex = ones(dataLength,1);
+    return;
 end
 
 
@@ -340,7 +346,7 @@ global minIndex threshold
 
 a = cnt - minIndex(dataIndex);
 
-if((a > threshold) && (minIndex(dataIndex)~= 1))
+if((a >= threshold) && (minIndex(dataIndex)~= 1))
     b = 1;
 else
     b = 0;
